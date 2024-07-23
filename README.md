@@ -2,17 +2,17 @@
 Convert vtt files to srt subtitle format
 > For Python 2.x [you can get version for Python 3.x here](https://github.com/jsonzilla/vtt_to_srt3)
 
-## Docs
-[https://jsonzilla.github.io/vtt_to_srt3/](https://jsonzilla.github.io/vtt_to_srt3/)
+## Docs (for the python3 version)
+[https://jsonzilla.github.io/vtt_to_srt2/](https://jsonzilla.github.io/vtt_to_srt2/)
 
 
 ## Installation
 ```shell
-pip install vtt_to_srt3
+pip install vtt_to_srt2
 ```
 
 ```cmd
-python -m pip install vtt_to_srt3
+python -m pip install vtt_to_srt2
 ```
 
 ## Usage from terminal
