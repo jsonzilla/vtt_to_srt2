@@ -9,14 +9,15 @@ import argparse
 from string import Template
 from stat import S_ISDIR, ST_MODE, S_ISREG
 
+import io 
 
 class VttToStr:
     """Convert vtt to srt"""
 
-    def __init__(self) -> None:
+    def __init__(self) :
         pass
 
-    def convert_header(self, contents: str) -> str:
+    def convert_header(self, contents) :
         """Convert of vtt header to srt format
 
         :contents -- contents of vtt file
@@ -26,7 +27,7 @@ class VttToStr:
         replacement = re.sub(r"Language:[ \-\w]+\n", "", replacement)
         return replacement
 
-    def add_padding_to_timestamp(self, contents: str) -> str:
+    def add_padding_to_timestamp(self, contents) :
         """Add 00 to padding timestamp of to srt format
 
         :contents -- contents of vtt file
@@ -40,7 +41,7 @@ class VttToStr:
             padding_minute, r"00:\1,\2 --> 00:\3,\4\n", contents)
         return re.sub(padding_second, r"00:00:\1,\2 --> 00:00:\3,\4\n", replacement)
 
-    def convert_timestamp(self, contents: str) -> str:
+    def convert_timestamp(self, contents) :
         """Convert timestamp of vtt file to srt format
 
         :contents -- contents of vtt file
@@ -50,7 +51,7 @@ class VttToStr:
             a=r"((?:\d\d:){0,2}\d\d)", b=r"(\d{0,3})")
         return self.add_padding_to_timestamp(re.sub(all_timestamp, r"\1,\2 --> \3,\4\n", contents))
 
-    def convert_content(self, contents: str) -> str:
+    def convert_content(self, contents) : 
         """Convert content of vtt file to srt format
 
         :contents -- contents of vtt file
@@ -63,19 +64,20 @@ class VttToStr:
         replacement = re.sub(
             r"::[\-\w]+\([\-.\w\d]+\)[ ]*{[.,:;\(\) \-\w\d]+\n }\n", "", replacement)
         replacement = re.sub(r"Style:\n##\n", "", replacement)
+        replacement = self.remove_blank_lines(replacement)
         replacement = self.remove_simple_identifiers(replacement)
         replacement = self.add_sequence_numbers(replacement)
 
         return replacement
 
-    def has_timestamp(self, content: str) -> bool:
+    def has_timestamp(self, content) : 
         """Check if line is a timestamp srt format
 
         :contents -- contents of vtt file
         """
         return re.match(r"((\d\d:){2}\d\d),(\d{3}) --> ((\d\d:){2}\d\d),(\d{3})", content) is not None
 
-    def add_sequence_numbers(self, contents: str) -> str:
+    def add_sequence_numbers(self, contents) : 
         """Adds sequence numbers to subtitle contents and returns new subtitle contents
 
         :contents -- contents of vtt file
@@ -89,8 +91,37 @@ class VttToStr:
                 counter += 1
             out += line + '\n'
         return out
-
-    def remove_simple_identifiers(self, contents: str) -> str:
+    
+    def remove_blank_lines(self, contents): 
+        # Remove useless blank lines from the vtt file 
+        lines = contents.split('\n')
+        lines = [x for x in lines if x != '']
+        lines.append('')
+        out = []
+        num = 0
+        while num < len(lines) :
+            if re.match(r"^\d+$", lines[num]) and self.has_timestamp(lines[num + 1]):
+                if num == 0 :
+                    pass
+                else:
+                    out.append('')
+                out.append(lines[num])
+                out.append(lines[num + 1])
+                num += 2
+            elif self.has_timestamp(lines[num]): 
+                if num == 0 :
+                    pass
+                else :
+                    out.append('')
+                out.append(lines[num])
+                num += 1
+            else:
+                out.append(lines[num])
+                num += 1
+        out.pop()
+        return '\n'.join(out)
+        
+    def remove_simple_identifiers(self, contents) : 
         """Remove simple identifiers of vtt file
 
         :contents -- contents of vtt file
@@ -104,7 +135,7 @@ class VttToStr:
             out.append(line)
         return '\n'.join(out)
 
-    def write_file(self, filename: str, data, encoding_format: str = "utf-8"):
+    def write_file(self, filename, data, encoding_format = "utf-8"):
         """Create a file with some data
 
         :filename -- filename pat
@@ -112,35 +143,37 @@ class VttToStr:
         :encoding_format -- encoding format
         """
         try:
-            with open(filename, "w", encoding=encoding_format) as file:
-                file.writelines(str(data))
+           
+            with io.open(filename, "w", encoding=encoding_format) as file:
+                file.writelines(data)
+             
         except IOError:
             filename = filename.split(os.sep)[-1]
-            with open(filename, "w", encoding=encoding_format) as file:
-                file.writelines(str(data))
-        print(f"file created {filename}\n")
+            with open(filename, "w") as file:
+                file.writelines(str(data.encode(encoding_format)))
+        print("file created {0}\n".format(filename))
 
-    def read_file(self, filename: str, encoding_format: str = "utf-8"):
+    def read_file(self, filename, encoding_format = "utf-8"):
         """Read a file text
 
         :filename -- filename path
         :encoding_format -- encoding format
         """
-        content: str = ''
-        with open(filename, mode="r", encoding=encoding_format) as file:
-            print(f"file being read: {filename}\n")
+        content = ''
+        
+        with io.open(filename, mode="r", encoding=encoding_format) as file:
+            print("file being read: {0}\n".format(filename))
             content = file.read()
-
         return content
 
-    def process(self, filename: str, encoding_format: str = "utf-8"):
+    def process(self, filename, encoding_format = "utf-8"):
         """Convert vtt file to a srt file
 
         :str_name_file -- filename path
         :encoding_format -- encoding format
         """
-        file_contents: str = self.read_file(filename, encoding_format)
-        str_data: str = ""
+        file_contents = self.read_file(filename, encoding_format)
+        str_data = ""
         str_data = str_data + self.convert_content(file_contents)
         filename = filename.replace(".vtt", ".srt")
         self.write_file(filename, str_data, encoding_format)
@@ -149,7 +182,7 @@ class VttToStr:
 class ConvertFile:
     """Convert vtt file to srt file"""
 
-    def __init__(self, pathname: str, encoding_format: str):
+    def __init__(self, pathname, encoding_format):
         """Constructor
 
         :pathname -- path to file or directory
@@ -168,7 +201,7 @@ class ConvertFile:
 class ConvertDirectories:
     """Convert vtt files to srt files"""
 
-    def __init__(self, pathname: str, enable_recursive: bool, encoding_format: str):
+    def __init__(self, pathname , enable_recursive , encoding_format ):
         """Constructor
 
         pathname -- path to file or directory
@@ -180,7 +213,7 @@ class ConvertDirectories:
         self.encoding_format = encoding_format
         self.vtt_to_str = VttToStr()
 
-    def _walk_dir(self, top_most_path: str, callback):
+    def _walk_dir(self, top_most_path, callback):
         """Walk a directory
 
         :top_most_path -- parent directory
@@ -210,9 +243,9 @@ class ConvertDirectories:
                 callback(pathname)
             else:
                 # Unknown file type, print a message
-                print(f"Skipping {pathname}")
+                print("Skipping {0}".format(pathname))
 
-    def convert_vtt_to_str(self, file: str):
+    def convert_vtt_to_str(self, file):
         """Convert vtt file to string
 
         :file -- file to convert
@@ -221,9 +254,9 @@ class ConvertDirectories:
             try:
                 self.vtt_to_str.process(file, self.encoding_format)
             except UnicodeDecodeError:
-                print(f"UnicodeDecodeError: {file}")
+                print("UnicodeDecodeError: {0}".format(file))
 
-    def _vtt_to_srt_batch(self, directory: str):
+    def _vtt_to_srt_batch(self, directory):
         """Walk down directory searching for vtt files
 
         :directory -- path to search
@@ -273,15 +306,15 @@ def main():
         encoding = "utf-8"
 
     if os.path.isfile(pathname):
-        print(f"file being converted: {pathname}\n")
+        print("file being converted: {0}\n".format(pathname))
         ConvertFile(pathname, encoding).convert()
 
     if os.path.isdir(pathname):
-        print(f"directory being converted: {pathname}\n")
+        print("directory being converted: {0}\n".format(pathname))
         ConvertDirectories(pathname, recursive, encoding).convert()
 
     if not os.path.isfile(pathname) and not os.path.isdir(pathname):
-        print(f"pathname is not a file or directory: {pathname}\n")
+        print("pathname is not a file or directory: {0}\n".format(pathname))
         _show_usage()
 
 
