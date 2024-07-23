@@ -5,6 +5,7 @@
 import os
 import pytest
 
+import io
 
 def _clean():
     """Remove all files with .srt extension without valid_output in name recursively"""
@@ -29,8 +30,8 @@ def concat_path(pathname):
 
 def equals_files(file_a, file_b, encoding):
     """Compare two text files independently of line endings"""
-    with open(concat_path(file_a), "r", encoding=encoding) as file_a:
-        with open(concat_path(file_b), "r", encoding=encoding) as file_b:
+    with io.open(concat_path(file_a), "r", encoding=encoding) as file_a:
+        with io.open(concat_path(file_b), "r", encoding=encoding) as file_b:
             a = file_a.read()
             b = file_b.read()
             return a == b
