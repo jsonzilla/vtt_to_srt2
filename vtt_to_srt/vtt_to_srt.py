@@ -51,7 +51,7 @@ class VttToStr:
             a=r"((?:\d\d:){0,2}\d\d)", b=r"(\d{0,3})")
         return self.add_padding_to_timestamp(re.sub(all_timestamp, r"\1,\2 --> \3,\4\n", contents))
 
-    def convert_content(self, contents) : 
+    def convert_content(self, contents, remove_format = False) : 
         """Convert content of vtt file to srt format
 
         :contents -- contents of vtt file
@@ -64,6 +64,8 @@ class VttToStr:
         replacement = re.sub(
             r"::[\-\w]+\([\-.\w\d]+\)[ ]*{[.,:;\(\) \-\w\d]+\n }\n", "", replacement)
         replacement = re.sub(r"Style:\n##\n", "", replacement)
+        if remove_format:
+            replacement = re.sub(r"<[^>]*>", "", replacement)  
         replacement = self.remove_blank_lines(replacement)
         replacement = self.remove_simple_identifiers(replacement)
         replacement = self.add_sequence_numbers(replacement)
@@ -166,7 +168,7 @@ class VttToStr:
             content = file.read()
         return content
 
-    def process(self, filename, encoding_format = "utf-8"):
+    def process(self, filename, remove_format, encoding_format = "utf-8"):
         """Convert vtt file to a srt file
 
         :str_name_file -- filename path
@@ -174,7 +176,7 @@ class VttToStr:
         """
         file_contents = self.read_file(filename, encoding_format)
         str_data = ""
-        str_data = str_data + self.convert_content(file_contents)
+        str_data = str_data + self.convert_content(file_contents, remove_format)
         filename = filename.replace(".vtt", ".srt")
         self.write_file(filename, str_data, encoding_format)
 
@@ -182,7 +184,7 @@ class VttToStr:
 class ConvertFile:
     """Convert vtt file to srt file"""
 
-    def __init__(self, pathname, encoding_format):
+    def __init__(self, pathname, encoding_format, remove_format=False):
         """Constructor
 
         :pathname -- path to file or directory
@@ -190,18 +192,19 @@ class ConvertFile:
         """
         self.pathname = pathname
         self.encoding_format = encoding_format
+        self.remove_format = remove_format
         self.vtt_to_str = VttToStr()
 
     def convert(self):
         """Convert vtt file to srt file"""
         if ".vtt" in self.pathname:
-            self.vtt_to_str.process(self.pathname, self.encoding_format)
+            self.vtt_to_str.process(self.pathname, self.remove_format, self.encoding_format)
 
 
 class ConvertDirectories:
     """Convert vtt files to srt files"""
 
-    def __init__(self, pathname , enable_recursive , encoding_format ):
+    def __init__(self, pathname , enable_recursive , encoding_format, remove_format = False ):
         """Constructor
 
         pathname -- path to file or directory
@@ -211,6 +214,7 @@ class ConvertDirectories:
         self.pathname = pathname
         self.enable_recursive = enable_recursive
         self.encoding_format = encoding_format
+        self.remove_format = remove_format
         self.vtt_to_str = VttToStr()
 
     def _walk_dir(self, top_most_path, callback):
@@ -252,7 +256,7 @@ class ConvertDirectories:
         """
         if ".vtt" in file:
             try:
-                self.vtt_to_str.process(file, self.encoding_format)
+                self.vtt_to_str.process(file, self.remove_format, self.encoding_format)
             except UnicodeDecodeError:
                 print("UnicodeDecodeError: {0}".format(file))
 
@@ -276,7 +280,8 @@ def _show_usage():
     """Show a info message about the usage"""
     print("\nUsage:\tvtt_to_srt pathname [-r]\n")
     print("\tpathname\t- a file or directory with files to be converted")
-    print("\t-r\t\t- walk path recursively\n")
+    print("\t-r\t\t- walk path recursively")
+    print("\t-rf\t\t- remove the format tags like bold & italic from output files\n")
 
 
 def _parse_args():
@@ -289,6 +294,8 @@ def _parse_args():
                         help="walk path recursively", action="store_true")
     parser.add_argument("-e", "--encoding",
                         help="encoding format for input and output files")
+    parser.add_argument("-rf", "--remove_format",
+                        help="remove the format tags like bold & italic from output files", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -301,17 +308,18 @@ def main():
     pathname = args.pathname
     recursive = args.recursive
     encoding = args.encoding
+    remove_format = args.remove_format
 
     if not encoding:
         encoding = "utf-8"
 
     if os.path.isfile(pathname):
         print("file being converted: {0}\n".format(pathname))
-        ConvertFile(pathname, encoding).convert()
+        ConvertFile(pathname, encoding, remove_format).convert()
 
     if os.path.isdir(pathname):
         print("directory being converted: {0}\n".format(pathname))
-        ConvertDirectories(pathname, recursive, encoding).convert()
+        ConvertDirectories(pathname, recursive, encoding, remove_format).convert()
 
     if not os.path.isfile(pathname) and not os.path.isdir(pathname):
         print("pathname is not a file or directory: {0}\n".format(pathname))
